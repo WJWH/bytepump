@@ -10,9 +10,10 @@ There are also a few helper methods to make "edge includes" simpler.
 * It only works on Linux distributions that have the `splice` syscall. 
 * It only works on IO objects that are actually backed by a linux file descriptor. So, a StringIO won't work.
 * Most Ruby (and C) methods that deal with IO do a lot of buffering. Mixing this gem with most IO methods that read from a socket will lead to unexpected results. IO#sysread should be OK though.
+* There is currently not a method that allows for splicing a limited number of bytes, it reads all the way until EOF is reached. Maybe I will add it in a future release.
 
 ## Examples
-###Copying a file:
+Copying a file:
 
 ```Ruby
 require 'bytepump'
@@ -23,7 +24,7 @@ f1.close
 f2.close
 ```
 
-###Emulating nonblocking `sendfile`:
+Emulating nonblocking `sendfile`:
 
 ```Ruby
 require 'bytepump'
@@ -41,7 +42,7 @@ f.close
 s.close
 ```
     
-###Very simple edge include: a picture of Matz from Wikipedia
+Very simple edge include: a picture of Matz from Wikipedia
 
 ```Ruby
 require 'bytepump'
@@ -61,7 +62,7 @@ s1.close
 s2.close
 ```
     
-###Slightly more involved example: Put together a custom zip archive from S3 objects using the ZipTricks library.
+Slightly more involved example: Put together a custom zip archive from S3 objects using the ZipTricks library.
 
 ```Ruby
 require 'bytepump'
