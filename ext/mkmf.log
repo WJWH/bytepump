@@ -1,6 +1,6 @@
 have_header: checking for fcntl.h... -------------------- yes
 
-"gcc -o conftest -I/usr/include/x86_64-linux-gnu/ruby-2.3.0 -I/usr/include/ruby-2.3.0/ruby/backward -I/usr/include/ruby-2.3.0 -I. -Wdate-time -D_FORTIFY_SOURCE=2   -g -O2 -fstack-protector-strong -Wformat -Werror=format-security -fPIC conftest.c  -L. -L/usr/lib/x86_64-linux-gnu -L. -Wl,-Bsymbolic-functions -Wl,-z,relro -Wl,-z,now -fstack-protector -rdynamic -Wl,-export-dynamic     -lruby-2.3  -lpthread -lgmp -ldl -lcrypt -lm   -lc"
+"gcc -o conftest -I/home/wjw/.rbenv/versions/2.3.1/include/ruby-2.3.0/x86_64-linux -I/home/wjw/.rbenv/versions/2.3.1/include/ruby-2.3.0/ruby/backward -I/home/wjw/.rbenv/versions/2.3.1/include/ruby-2.3.0 -I. -I/home/wjw/.rbenv/versions/2.3.1/include     -O3 -fno-fast-math -ggdb3 -Wall -Wextra -Wno-unused-parameter -Wno-parentheses -Wno-long-long -Wno-missing-field-initializers -Wunused-variable -Wpointer-arith -Wwrite-strings -Wdeclaration-after-statement -Wimplicit-function-declaration -Wdeprecated-declarations -Wno-packed-bitfield-compat -Wno-maybe-uninitialized conftest.c  -L. -L/home/wjw/.rbenv/versions/2.3.1/lib -Wl,-R/home/wjw/.rbenv/versions/2.3.1/lib -L. -L/home/wjw/.rbenv/versions/2.3.1/lib  -fstack-protector -rdynamic -Wl,-export-dynamic     -Wl,-R/home/wjw/.rbenv/versions/2.3.1/lib -L/home/wjw/.rbenv/versions/2.3.1/lib -lruby-static  -lpthread -lgmp -ldl -lcrypt -lm   -lc"
 checked program was:
 /* begin */
 1: #include "ruby.h"
@@ -11,7 +11,7 @@ checked program was:
 6: }
 /* end */
 
-"gcc -E -I/usr/include/x86_64-linux-gnu/ruby-2.3.0 -I/usr/include/ruby-2.3.0/ruby/backward -I/usr/include/ruby-2.3.0 -I. -Wdate-time -D_FORTIFY_SOURCE=2   -g -O2 -fstack-protector-strong -Wformat -Werror=format-security -fPIC  conftest.c -o conftest.i"
+"gcc -E -I/home/wjw/.rbenv/versions/2.3.1/include/ruby-2.3.0/x86_64-linux -I/home/wjw/.rbenv/versions/2.3.1/include/ruby-2.3.0/ruby/backward -I/home/wjw/.rbenv/versions/2.3.1/include/ruby-2.3.0 -I. -I/home/wjw/.rbenv/versions/2.3.1/include     -O3 -fno-fast-math -ggdb3 -Wall -Wextra -Wno-unused-parameter -Wno-parentheses -Wno-long-long -Wno-missing-field-initializers -Wunused-variable -Wpointer-arith -Wwrite-strings -Wdeclaration-after-statement -Wimplicit-function-declaration -Wdeprecated-declarations -Wno-packed-bitfield-compat -Wno-maybe-uninitialized  conftest.c -o conftest.i"
 checked program was:
 /* begin */
 1: #include "ruby.h"
@@ -23,7 +23,7 @@ checked program was:
 
 have_header: checking for stdio.h... -------------------- yes
 
-"gcc -E -I/usr/include/x86_64-linux-gnu/ruby-2.3.0 -I/usr/include/ruby-2.3.0/ruby/backward -I/usr/include/ruby-2.3.0 -I. -Wdate-time -D_FORTIFY_SOURCE=2   -g -O2 -fstack-protector-strong -Wformat -Werror=format-security -fPIC  conftest.c -o conftest.i"
+"gcc -E -I/home/wjw/.rbenv/versions/2.3.1/include/ruby-2.3.0/x86_64-linux -I/home/wjw/.rbenv/versions/2.3.1/include/ruby-2.3.0/ruby/backward -I/home/wjw/.rbenv/versions/2.3.1/include/ruby-2.3.0 -I. -I/home/wjw/.rbenv/versions/2.3.1/include     -O3 -fno-fast-math -ggdb3 -Wall -Wextra -Wno-unused-parameter -Wno-parentheses -Wno-long-long -Wno-missing-field-initializers -Wunused-variable -Wpointer-arith -Wwrite-strings -Wdeclaration-after-statement -Wimplicit-function-declaration -Wdeprecated-declarations -Wno-packed-bitfield-compat -Wno-maybe-uninitialized  conftest.c -o conftest.i"
 checked program was:
 /* begin */
 1: #include "ruby.h"

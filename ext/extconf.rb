@@ -6,5 +6,7 @@ extension_name = "bytepump"
 have_header('fcntl.h') #voor splice
 have_header('stdio.h') #voor fprint
 
+# The destination
+dir_config(extension_name)
 
-create_makefile('bytepump')
+create_makefile('bytepump/bytepump')

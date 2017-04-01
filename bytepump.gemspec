@@ -8,7 +8,6 @@ Gem::Specification.new do |spec|
   spec.version       = Bytepump::VERSION
   spec.authors       = ["Wander Hillen"]
   spec.email         = ["wjw.hillen@gmail.com"]
-
   spec.summary       = %q{A simple gem to splice data between file descriptors.}
   spec.description   = %q{Uses the linux splice syscall to rapidly transport data between file descriptors in kernel memory.}
   spec.homepage      = "https://github.com/WJWH/bytepump"
@@ -26,7 +25,7 @@ Gem::Specification.new do |spec|
   spec.bindir        = "exe"
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
-  spec.extensions = FileList["ext/**/extconf.rb"] #include the C files
+  spec.extensions = ["ext/extconf.rb"] #include the C files
 
   spec.add_development_dependency "bundler", "~> 1.11"
   spec.add_development_dependency "rake", "~> 10.0"
