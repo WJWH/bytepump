@@ -55,10 +55,10 @@ static int wait_for_fd(int fd, long timeout, int readsock){
     return retval;
 }
 
-static VALUE rb_io_test_moveloop(VALUE read_socket, VALUE write_socket) {
+static VALUE rb_io_spliceloop(VALUE read_socket, VALUE write_socket, VALUE timeout_val) {
     //extract the sockets from their ruby objects
     int read_sock_fd, write_sock_fd, result;
-    long timeout = 10;//ten seconds for testing
+    long timeout = NUM2LONG(timeout_val);
     read_sock_fd = get_rb_fileno(read_socket);
     write_sock_fd = get_rb_fileno(write_socket);
     //whether a block was given doesn't change, so we might as well cache it 
@@ -154,7 +154,7 @@ static VALUE rb_io_test_moveloop(VALUE read_socket, VALUE write_socket) {
 //setup the lib
 void Init_bytepump(void)
 {
-	rb_define_method(rb_cIO, "splice_to", rb_io_spliceloop, 1);
+	rb_define_method(rb_cIO, "c_splice_to", rb_io_spliceloop, 2);
     
 }
 
