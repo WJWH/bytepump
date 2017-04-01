@@ -7,8 +7,8 @@
 #include <string.h>
 #include <sys/select.h>
 
-VALUE FD_splice = Qnil;
-VALUE FDS = Qnil;
+//we always use the same flags for the splice() call anyway
+unsigned int spliceopts = SPLICE_F_NONBLOCK | SPLICE_F_MORE | SPLICE_F_MOVE;
 
 #if ! HAVE_RB_IO_T
 #  define rb_io_t OpenFile
@@ -56,51 +56,44 @@ static int wait_for_fd(int fd, long timeout, int readsock){
 }
 
 static VALUE rb_io_spliceloop(VALUE read_socket, VALUE write_socket, VALUE timeout_val) {
-    //extract the sockets from their ruby objects
-    int read_sock_fd, write_sock_fd, result;
+    VALUE retval;//define here for making single return possible
+    int pipefd[2], read_sock_fd, write_sock_fd, result, block_given, bytesinpipe = 0;
     long timeout = NUM2LONG(timeout_val);
+    unsigned long long bytes_sent = 0;//64 bits should be enough for a while (famous last words)
+    //extract the sockets from their ruby objects
     read_sock_fd = get_rb_fileno(read_socket);
     write_sock_fd = get_rb_fileno(write_socket);
     //whether a block was given doesn't change, so we might as well cache it 
-    int block_given = rb_block_given_p();
-    //the splice flags are always the same anyway
-    unsigned int spliceopts = SPLICE_F_NONBLOCK | SPLICE_F_MORE | SPLICE_F_MOVE;
-    //splice can't move data directly between data descriptors, it needs a kernel buffer in between to moderate
-    //the pipe call makes such a buffer for us.
-    int pipefd[2];
+    block_given = rb_block_given_p();
+    //splice can't move data directly between data descriptors, it needs a kernel buffer in between 
+    //to moderate. The pipe call makes such a buffer for us.
     result = pipe(pipefd);
     if (result < 0){
-        return ID2SYM( rb_intern( "pipe_error" )); //
+        retval = ID2SYM( rb_intern( "pipe_error" )); //this should VERY rarely happen, but CHECK EVERYTHING
+        goto end;
     }
-    int bytesinpipe = 0; //int should be enogh as default pipe size is only 64 kb
-    unsigned long long bytes_sent = 0;//64 bits should be enough for a while (famous last words)
     //now to do the copying
     //splice only returns 0 at eof
     while (result = splice(read_sock_fd, 0, pipefd[1], NULL, 65536, spliceopts)){
         if (result == -1){
             if(errno == EAGAIN){
                 result = wait_for_fd(read_sock_fd, timeout, 1);
-                if (result < 0) { 
-                    close(pipefd[0]);
-                    close(pipefd[1]);
-                    return ID2SYM( rb_intern( "select_error" ));
+                if (result < 0) { //some error in select() happened
+                    retval = ID2SYM( rb_intern( "select_error" ));
+                    goto closepipe;
                 }
-                else if (result == 0) {
-                    //select timed out
-                    close(pipefd[0]);
-                    close(pipefd[1]);
-                    return ID2SYM( rb_intern( "timeout_upstream" ));
+                else if (result == 0) {//select timed out
+                    retval = ID2SYM( rb_intern( "timeout_upstream" ));
+                    goto closepipe;
                 }
-                else {
-                    //we can continue reading now, nothing to see here.
+                else {//we can continue reading now, nothing to see here.
                     //pipe should still be empty, so the read loop will be skipped and we
                     //go straight back to the splice from the read socket
                 }
             }
-            else {
-                close(pipefd[0]);
-                close(pipefd[1]);
-                return ID2SYM( rb_intern( "splice_error" ));
+            else { //another type of error happened that we can't recover from
+                retval = ID2SYM( rb_intern( "splice_error" ));
+                goto closepipe;
             }
         }
         else{
@@ -112,28 +105,21 @@ static VALUE rb_io_spliceloop(VALUE read_socket, VALUE write_socket, VALUE timeo
             if (result == -1){
                 if(errno == EAGAIN){
                     result = wait_for_fd(write_sock_fd, timeout, 0);
-                    if (result < 0) { 
-                        //select returned an error
-                        close(pipefd[0]);
-                        close(pipefd[1]);
-                        return ID2SYM( rb_intern( "select_error" ));
+                    if (result < 0) { //select returned an error
+                        retval = ID2SYM( rb_intern( "select_error" ));
+                        goto closepipe;
                     }
-                    else if (result == 0) {
-                        //the select call timed out
-                        close(pipefd[0]);
-                        close(pipefd[1]);
-                        return ID2SYM( rb_intern( "timeout_downstream" ));
+                    else if (result == 0) { //the select call timed out
+                        retval = ID2SYM( rb_intern( "timeout_downstream" ));
+                        goto closepipe;
                     }
-                    else {
-                        //the select call returned positive nonzero, and since it was only watching one fd 
-                        //that means we can continue writing now
-                        }
+                    else {//the select call returned positive nonzero, and since it 
+                        // was only watching one fd that means we can continue writing now
+                    }
                 }
-                else {
-                    //another type of error happened that we can't recover from
-                    close(pipefd[0]);
-                    close(pipefd[1]);
-                    return ID2SYM( rb_intern( "splice_error" ));
+                else {//another type of error happened that we can't recover from
+                    retval = ID2SYM( rb_intern( "splice_error" ));
+                    goto closepipe;
                 }
             }
             else{//write succesful
@@ -144,10 +130,13 @@ static VALUE rb_io_spliceloop(VALUE read_socket, VALUE write_socket, VALUE timeo
             }
         } //end of writing while loop
     } //end of reading while loop
-    
+    retval = ULL2NUM(bytes_sent);
+    //some labels to jump to for error handling
+    closepipe: //don't leak file descriptors for the generated pipes
     close(pipefd[0]);
     close(pipefd[1]);
-    return ULL2NUM(bytes_sent);
+    end: 
+    return retval;
 }
 
 
