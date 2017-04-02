@@ -41,27 +41,27 @@ f.splice_to(s, 60) {|b| report_that_some_bytes_were_sent(b) }
 f.close
 s.close
 ```
-    
-Very simple edge include: a picture of Matz from Wikipedia
+
+Very simple edge include: a picture of Matz
 
 ```Ruby
 require 'bytepump'
 require 'socket'
 require 'io/nonblock'
 s1 = ... # we'll assume you already got it from somewhere, like a rack hijack or something
-#further assume that you have already sent any headers etc that you want to s1
+#further assume that you have already sent any response headers etc that you want to s1
 s1.flush # clear any buffer 
-s2 = TCPSocket "https://en.wikipedia.org",80
+s2 = TCPSocket "s3.amazonaws.com",80
 s1.nonblock = true
 s2.nonblock = true
 #request the page
-s2 << "GET /wiki/Yukihiro_Matsumoto#/media/File:Yukihiro_Matsumoto.JPG HTTP/1.0\n\n"
+s2 << "GET /nlga/uploads/item/image/12267/125.png HTTP/1.0\n\n"
 s2.skip_headers # will read ahead until it encounters a double \r\n, indicating end of headers
 s2.splice_to(s1, 60) #you can also leave the block and it will not report its progress
 s1.close
 s2.close
 ```
-    
+
 Slightly more involved example: Put together a custom zip archive from S3 objects using the ZipTricks library.
 
 ```Ruby
@@ -82,7 +82,7 @@ ZipTricks::Streamer.open(s) do | zip |
         zip.add_stored_entry(filename: obj.filename, size: obj.filename, crc32: obj.crc32)
         #you will need to set your bucket permissions right for this
         s.flush #'normal' Ruby IO is heavily buffered and doesn't play well with bytepump
-        bytes_written = s.splice_from(host: s3_url, path: obj.s3_path) {|b| report_that_some_bytes_were_sent(b)} 
+        bytes_written = s.splice_from(host: s3_url, path: obj.s3_path) {|b| report_bytes_sent(b)}
         zip.simulate_write(bytes_written)
     end
 end #ending the block will cause the central directory for the archive to be written
