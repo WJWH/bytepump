@@ -56,7 +56,7 @@ s1.nonblock = true
 s2.nonblock = true
 #request the page
 s2 << "GET /wiki/Yukihiro_Matsumoto#/media/File:Yukihiro_Matsumoto.JPG HTTP/1.0\n\n"
-s2.skipHeaders # will read ahead until it encounters a double \r\n, indicating end of headers
+s2.skip_headers # will read ahead until it encounters a double \r\n, indicating end of headers
 s2.splice_to(s1, 60) #you can also leave the block and it will not report its progress
 s1.close
 s2.close
@@ -82,7 +82,7 @@ ZipTricks::Streamer.open(s) do | zip |
         zip.add_stored_entry(filename: obj.filename, size: obj.filename, crc32: obj.crc32)
         #you will need to set your bucket permissions right for this
         s.flush #'normal' Ruby IO is heavily buffered and doesn't play well with bytepump
-        bytes_written = s.spliceFrom(url: obj.s3_url, timeout:) {|b| report_that_some_bytes_were_sent(b)} 
+        bytes_written = s.splice_from(host: s3_url, path: obj.s3_path) {|b| report_that_some_bytes_were_sent(b)} 
         zip.simulate_write(bytes_written)
     end
 end #ending the block will cause the central directory for the archive to be written
