@@ -55,11 +55,15 @@ static int wait_for_fd(int fd, long timeout, int readsock){
     return retval;
 }
 
-static VALUE rb_io_spliceloop(VALUE read_socket, VALUE write_socket, VALUE timeout_val) {
-    VALUE retval;//define here for making single return possible
+//static VALUE rb_io_spliceloop(VALUE read_socket, VALUE write_socket, VALUE timeout_val) {
+static VALUE rb_io_spliceloop(int argc, VALUE *argv, VALUE read_socket) {
+    VALUE retval, write_socket, timeout_val; 
     int pipefd[2], read_sock_fd, write_sock_fd, result, block_given, bytesinpipe = 0;
-    long timeout = NUM2LONG(timeout_val);
+    long timeout;
     unsigned long long bytes_sent = 0;//64 bits should be enough for a while (famous last words)
+    //convert args
+    rb_scan_args(argc, argv, "11", &write_socket, &timeout_val);
+    timeout = NIL_P(timeout_val) ? 60 : NUM2LONG(timeout_val);//if none given, use 60, else the value given
     //extract the sockets from their ruby objects
     read_sock_fd = get_rb_fileno(read_socket);
     write_sock_fd = get_rb_fileno(write_socket);
@@ -143,7 +147,6 @@ static VALUE rb_io_spliceloop(VALUE read_socket, VALUE write_socket, VALUE timeo
 //setup the lib
 void Init_bytepump(void)
 {
-	rb_define_method(rb_cIO, "c_splice_to", rb_io_spliceloop, 2);
+	rb_define_method(rb_cIO, "splice_to", rb_io_spliceloop, -1);
     
 }
-
