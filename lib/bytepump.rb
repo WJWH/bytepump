@@ -8,7 +8,7 @@ class IO
   #skip bytes until you get to the body of the response
   def skip_headers(max_read_size = 4096)
     headers = ""
-    until (headers[-3..-1] == "\n\r\n" || headers[-2..-1] = "\n\n" || headers.size >= max_read_size) do
+    until (headers[-3..-1] == "\n\r\n" || headers[-2..-1] == "\n\n" || headers.size >= max_read_size) do
       headers << self.sysread(1)
     end
     return headers
