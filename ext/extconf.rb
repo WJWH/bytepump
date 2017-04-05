@@ -1,10 +1,10 @@
 require 'mkmf'
 
-extension_name = "bytepump"
+extension_name = 'bytepump'
 
-#paar haves?
-have_header('fcntl.h') #voor splice
-have_header('stdio.h') #voor fprint
+# paar haves?
+have_header('fcntl.h') # voor splice
+have_header('stdio.h') # voor fprint
 
 # The destination
 dir_config(extension_name)

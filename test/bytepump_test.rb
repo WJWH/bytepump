@@ -40,11 +40,10 @@ class BytepumpTest < Minitest::Test
   def receiving_server(filename, port)
     Thread.new do
       f = File.open filename, 'w' # will overwrite any previous contents
-      f.nonblock = true
       ss = TCPServer.new port
       s = ss.accept
       s.nonblock = true
-      s.splice_to(f,1)
+      s.splice_to(f, 1)
       s.close
       ss.close
       f.close
@@ -57,7 +56,7 @@ class BytepumpTest < Minitest::Test
     f1 = File.open @input_file
     s = TCPSocket.new '127.0.0.1', 3001
     s.nonblock = true # if you forget this on big inputs it'll need a kill -9
-    r = f1.splice_to(s, 3) # timeout of 3 sec
+    f1.splice_to(s, 3) # timeout of 3 sec
     s.close
     t.join # wait for thread to finish
     assert_equal md5(@input_file), md5(@output_file) # files must be equal
