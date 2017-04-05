@@ -46,17 +46,15 @@ static int get_rb_fileno(VALUE io)
 //all real waiting is done outside the GVL 
 static void* select_no_gvl(void *data){
     fd_set fds;
-    struct timeval tv;
     int rv;
-    struct select_args *args = data;
+    struct select_args *args = data; //cast args to struct so C knows where to find everything
+    //fill the timeout structure -> timeout seconds, no milliseconds
+    struct timeval tv = {args->timeout};
     //setup the fd set
     int fd = args->fd;
     FD_ZERO(&fds);
     FD_SET(fd, &fds);
-    //fill the timeout structure -> timeout seconds, no milliseconds
-    tv.tv_sec = args->timeout;
-    tv.tv_usec = 0;
-    //
+    //do the actual select call
     if(args->readsock){
         rv = select(fd+1, &fds, NULL, NULL, &tv);
     }
@@ -71,8 +69,7 @@ static void* select_no_gvl(void *data){
 //eventually implement evading the gvl for this one (or just use one of the existing ones from thread.c?)
 static int wait_for_fd(int fd, long timeout, int readsock){
     struct select_args args = {fd,timeout,readsock}; 
-    int result;
-    result = (int)rb_thread_call_without_gvl(select_no_gvl,&args,RUBY_UBF_IO,0);
+    int result = (int)rb_thread_call_without_gvl(select_no_gvl,&args,RUBY_UBF_IO,0);
     return result;
 }
 
@@ -170,5 +167,4 @@ static VALUE rb_io_spliceloop(int argc, VALUE *argv, VALUE read_socket) {
 void Init_bytepump(void)
 {
 	rb_define_method(rb_cIO, "splice_to", rb_io_spliceloop, -1);
-    
 }
