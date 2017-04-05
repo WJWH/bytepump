@@ -1,5 +1,6 @@
 #include "ruby.h"
 #include "ruby/io.h" //defines rb_cIO zodat je je eigen methods onder IO kan hangen
+#include "ruby/thread.h" //defines the gvl evasion functions
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -23,6 +24,16 @@ unsigned int spliceopts = SPLICE_F_NONBLOCK | SPLICE_F_MORE | SPLICE_F_MOVE;
 #    define FPTR_TO_FD(fptr) fptr->fd
 #  endif
 #endif
+//define 
+typedef void * (*my_blocking_fn_t)(void*);
+#  define WITHOUT_GVL(fn,a) \
+rb_thread_call_without_gvl((my_blocking_fn_t)(fn),(a),RUBY_UBF_IO,0)
+
+struct select_args {
+   int fd;
+   long timeout;
+   int readsock;
+};
 
 //gets the file descriptor out of the ruby IO object 
 static int get_rb_fileno(VALUE io)
@@ -32,28 +43,39 @@ static int get_rb_fileno(VALUE io)
 	return FPTR_TO_FD(fptr);
 }
 
+//all real waiting is done outside the GVL 
+static void* select_no_gvl(void *data){
+    fd_set fds;
+    struct timeval tv;
+    int rv;
+    struct select_args *args = data;
+    //setup the fd set
+    int fd = args->fd;
+    FD_ZERO(&fds);
+    FD_SET(fd, &fds);
+    //fill the timeout structure -> timeout seconds, no milliseconds
+    tv.tv_sec = args->timeout;
+    tv.tv_usec = 0;
+    //
+    if(args->readsock){
+        rv = select(fd+1, &fds, NULL, NULL, &tv);
+    }
+    else{
+        rv = select(fd+1, NULL, &fds, NULL, &tv);
+    }
+    return (VALUE)rv;
+}
+
 //returning zero means it timed out, returning 1 means data is available to be read or written
 //returning -1 means select encountered an error
 //eventually implement evading the gvl for this one (or just use one of the existing ones from thread.c?)
 static int wait_for_fd(int fd, long timeout, int readsock){
-    fd_set fds;
-    struct timeval tv;
-    int retval;
-    //setup the fd set
-    FD_ZERO(&fds);
-    FD_SET(fd, &fds);
-    //fill the timeout structure -> timeout seconds, no milliseconds
-    tv.tv_sec = timeout;
-    tv.tv_usec = 0;
-    //do the actual select, different if you are wanting to write or wanting to read
-    if (readsock){//wait for socket readable
-        retval = select(fd+1, &fds, NULL, NULL, &tv);
-    }
-    else{//wait for socket writeable instead
-        retval = select(fd+1, NULL, &fds, NULL, &tv);
-    }
-    return retval;
+    struct select_args args = {fd,timeout,readsock}; 
+    int result;
+    result = (int)rb_thread_call_without_gvl(select_no_gvl,&args,RUBY_UBF_IO,0);
+    return result;
 }
+
 
 //static VALUE rb_io_spliceloop(VALUE read_socket, VALUE write_socket, VALUE timeout_val) {
 static VALUE rb_io_spliceloop(int argc, VALUE *argv, VALUE read_socket) {
