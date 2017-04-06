@@ -2,14 +2,15 @@
 A small Ruby gem to efficiently splice the contents of one file descriptor to another, using Linux syscalls.
 
 ## What it does
-If you have two IO objects that are backed by a file, a socket or a pipe (basically anything with a file descriptor), this gem will define a method `splice_to` that will use the Linux `splice` syscall to copy the contents from one of your IOs to the other, while keeping the actual data copied out of the Ruby VM and so not triggering any GC. As such it works a bit like `IO#copy_stream`, but it always works in a nonblocking way, using a timeout where necessary and optionally calling a block whenever some data is written to the downstream socket.
+If you have two IO objects that are backed by a file, a socket or a pipe (basically anything with a file descriptor), this gem will define a method `splice_to` that will use the Linux `splice` syscall to copy the contents from one of your IOs to the other, while keeping the actual data copied out of the Ruby VM and so not triggering any GC. As such it works a bit like `IO::copy_stream`, but it always works in a nonblocking way, using a timeout where necessary and optionally calling a block whenever some data is written to the downstream socket.
 
 There are also a few helper methods to make "edge includes" simpler.
 
 ## Limitations
 * It only works on Linux distributions that have the `splice` syscall. 
+* It only works on Ruby version >2.0, due to the GVL escaping funcions used.
 * It only works on IO objects that are actually backed by a linux file descriptor. So, a StringIO won't work.
-* Most Ruby (and C) methods that deal with IO do a lot of buffering. Mixing this gem with most IO methods that read from a socket will lead to unexpected results. IO#sysread should be OK though.
+* Most Ruby (and C) methods that deal with IO do a lot of buffering, even on reads. Mixing this gem with most IO methods that read from a socket will lead to unexpected results. IO#sysread should be OK though.
 * There is currently not a method that allows for splicing a limited number of bytes, it reads all the way until EOF is reached. Maybe I will add it in a future release.
 
 ## Examples
@@ -36,7 +37,7 @@ f = File.open 'file1.txt'
 f.nonblock = true
 #every time some bytes were sent, the block will be called with the amount of bytes.
 #if the downstream socket slowlorises and doesn't download any bytes for 60 seconds, this will
-#return `:timeout_downstream`, otherwise it will return the total number of bytes sent
+#return :timeout_downstream, otherwise it will return the total number of bytes sent
 f.splice_to(s, 60) {|b| report_that_some_bytes_were_sent(b) } 
 f.close
 s.close
@@ -62,7 +63,7 @@ s1.close
 s2.close
 ```
 
-Slightly more involved example: Put together a custom zip archive from S3 objects using the ZipTricks library.
+Slightly more involved example: Put together a custom zip archive from S3 objects using Wetransfers' ZipTricks library.
 
 ```Ruby
 require 'bytepump'
