@@ -9,7 +9,7 @@
 #include <sys/select.h>
 
 //we always use the same flags for the splice() call anyway
-unsigned int spliceopts = SPLICE_F_NONBLOCK | SPLICE_F_MORE | SPLICE_F_MOVE;
+unsigned int spliceopts = SPLICE_F_NONBLOCK | SPLICE_F_MORE;
 
 #if ! HAVE_RB_IO_T
 #  define rb_io_t OpenFile
@@ -100,6 +100,7 @@ static VALUE rb_io_spliceloop(int argc, VALUE *argv, VALUE read_socket) {
     while (result = splice(read_sock_fd, 0, pipefd[1], NULL, 65536, spliceopts)){
         if (result == -1){
             if(errno == EAGAIN){
+                printf("wait a bit while receiving\n");
                 result = wait_for_fd(read_sock_fd, timeout, 1);
                 if (result < 0) { //some error in select() happened
                     retval = ID2SYM( rb_intern( "select_error" ));
@@ -115,7 +116,8 @@ static VALUE rb_io_spliceloop(int argc, VALUE *argv, VALUE read_socket) {
                 }
             }
             else { //another type of error happened that we can't recover from
-                retval = ID2SYM( rb_intern( "splice_error" ));
+                retval = ID2SYM( rb_intern( "splice_error_upstream" ));
+                printf("errno: %d, bytesinpipe: %d, bytes_sent: %d\n", errno, bytesinpipe, bytes_sent);
                 goto closepipe;
             }
         }
@@ -141,7 +143,7 @@ static VALUE rb_io_spliceloop(int argc, VALUE *argv, VALUE read_socket) {
                     }
                 }
                 else {//another type of error happened that we can't recover from
-                    retval = ID2SYM( rb_intern( "splice_error" ));
+                    retval = ID2SYM( rb_intern( "splice_error_downstream" ));
                     goto closepipe;
                 }
             }

@@ -2,6 +2,7 @@ require 'bytepump/version'
 require 'bytepump/bytepump' # the C file
 require 'io/nonblock'
 require 'socket'
+require 'io/splice'
 
 # add some methods to IO
 class IO
@@ -16,14 +17,70 @@ class IO
     puts "response_code: #{headers[0..3]}"
     headers
   end
-
-  # terribly hacky, but it works.
+end
+  # terribly hacky, but it works?
   # TODO: make this better with actual header parsing and such
-  def splice_from(host:, path:, timeout: 60)
-    s = TCPSocket.new(host, 80)
-    s << "GET #{path} HTTP/1.0\n\n"
-    s.skip_headers
-    s.splice_to(self, timeout)
-    s.close
+#  def splice_from(host:, path:, timeout: 60)
+#    s = TCPSocket.new(host, 80)
+#    s << "GET #{path} HTTP/1.0\n\n"
+#    s.skip_headers
+#    s.splice_to(self, timeout)
+#    s.close
+#  end
+    #BLOCK_SIZE = 4096 # default kernel buffer size on linux is 65536
+    #FLAGS = IO::Splice::F_MOVE | IO::Splice::F_MORE # NONBLOCK flag not needed, it's always used with try_splice 
+
+def splice_from_URL(send_socket, host, path, num_to_read)
+  block_size = 4096 # default kernel buffer size on linux is 65536
+  flags = IO::Splice::F_MOVE | IO::Splice::F_MORE
+  timeout = 60
+
+  # generate socket to S3
+  recv_socket = TCPSocket.new(host,80)
+  recv_socket.nonblock = true
+  recv_socket << "GET #{path} HTTP/1.0\nConnection: keep-alive\n\n"
+  p recv_socket.skip_headers
+  recv_socket.nonblock = true
+
+  send_socket.nonblock = true
+
+  recv_socket_fd = recv_socket.fileno
+  send_socket_fd = send_socket.fileno
+
+  sent_so_far = 0
+  read_so_far = 0
+  bytes_in_buffer = 0
+  pipe = IO.pipe
+  rfd, wfd = pipe.map { |io| io.fileno }
+
+
+  while (num_to_read > 0)
+    send_this_time = num_to_read > block_size ? block_size : num_to_read
+    raise "aha!" if recv_socket.closed?
+    recv_result = IO.trysplice(recv_socket_fd,nil,wfd,nil,send_this_time,flags) 
+    case recv_result
+    when :EAGAIN
+      readables, _, errored = IO.select([recv_socket], nil, [recv_socket], timeout)
+      raise "recv fail" if !errored.empty?
+      #continue
+    else
+      bytes_in_buffer += recv_result
+      read_so_far += recv_result
+    end
+    while (bytes_in_buffer > 0)
+      send_result = IO.trysplice(rfd,nil,send_socket_fd,nil,bytes_in_buffer,flags)
+      case send_result
+      when :EAGAIN
+        _, writeables, errored = IO.select(nil, [writable_socket], [writable_socket], timeout)
+        raise "send fail" if !errored.empty?
+        #continue
+      else
+        bytes_in_buffer -= send_result
+        num_to_read -= send_result
+        sent_so_far += send_result
+        yield "send_result: #{send_result}, read_so_far: #{read_so_far}" if block_given? 
+      end
+    end
   end
+  sent_so_far
 end
