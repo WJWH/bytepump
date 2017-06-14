@@ -13,6 +13,7 @@ class IO
           headers.size >= max_read_size
       headers << sysread(1)
     end
+    puts "response_code: #{headers[0..3]}"
     headers
   end
 
