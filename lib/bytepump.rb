@@ -38,7 +38,7 @@ def splice_from_URL(send_socket, host, path, num_to_read)
   # generate socket to S3
   recv_socket = TCPSocket.new(host,80)
   recv_socket.nonblock = true
-  recv_socket << "GET #{path} HTTP/1.0\nConnection: keep-alive\n\n"
+  recv_socket << "GET #{path} HTTP/1.1\nHost:#{host}\nConnection: keep-alive\n\n"
   p recv_socket.skip_headers
   recv_socket.nonblock = true
 
