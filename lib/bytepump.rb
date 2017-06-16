@@ -1,5 +1,4 @@
 require 'bytepump/version'
-require 'bytepump/bytepump' # the C file
 require 'io/nonblock'
 require 'socket'
 require 'io/splice'
