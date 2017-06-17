@@ -21,6 +21,7 @@ Gem::Specification.new do |spec|
   spec.platform      = "x86_64-linux"
   
   spec.add_runtime_dependency 'io_splice'
+  spec.add_runtime_dependency 'retriable'
   
   spec.add_development_dependency 'bundler', '~> 1.11'
   spec.add_development_dependency 'rake', '~> 10.0'
