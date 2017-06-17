@@ -18,7 +18,7 @@ class IO
   end
 end
 
-def splice_from_URL(send_socket, host, path, num_to_read)
+def splice_from_URL(send_socket: send_socket, host: , path: , num_to_read: )
   block_size = 4096 # default kernel buffer size on linux is 65536
   flags = IO::Splice::F_MOVE | IO::Splice::F_MORE
   timeout = 60
@@ -41,29 +41,35 @@ def splice_from_URL(send_socket, host, path, num_to_read)
   pipe = IO.pipe
   rfd, wfd = pipe.map { |io| io.fileno }
 
-
-  while (num_to_read > 0)
-    send_this_time = num_to_read > block_size ? block_size : num_to_read
-    recv_result = IO.trysplice(recv_socket_fd,nil,wfd,nil,send_this_time,flags) 
-    case recv_result
-    when :EAGAIN
-      readables, _, errored = IO.select([recv_socket], nil, [recv_socket], timeout)
-      raise "recv fail" if !errored.empty?
-    else
-      bytes_in_buffer += recv_result
-      read_so_far += recv_result
-    end
-    while (bytes_in_buffer > 0)
-      send_result = IO.trysplice(rfd,nil,send_socket_fd,nil,bytes_in_buffer,flags)
-      case send_result
+  Retriable.retriable do
+    while (num_to_read > 0)
+      send_this_time = num_to_read > block_size ? block_size : num_to_read
+      recv_result = IO.trysplice(recv_socket_fd,nil,wfd,nil,send_this_time,flags) 
+      case recv_result
       when :EAGAIN
-        _, writeables, errored = IO.select(nil, [writable_socket], [writable_socket], timeout)
-        raise "send fail" if !errored.empty?
+        readables, _, errored = IO.select([recv_socket], nil, [recv_socket], timeout)
+        raise "recv fail" if !errored.empty?
+      when nil
+        # This can only happen if the upstream socket is at EOF, but if that was expected we
+        # would not be here because the while loop would have ended. OTOH, S3 should have
+        # returned an error saying that many bytes could not be served :|
+        raise "unexpected EOF"
       else
-        bytes_in_buffer -= send_result
-        num_to_read -= send_result
-        sent_so_far += send_result
-        yield send_result if block_given? 
+        bytes_in_buffer += recv_result
+        read_so_far += recv_result
+      end
+      while (bytes_in_buffer > 0)
+        send_result = IO.trysplice(rfd,nil,send_socket_fd,nil,bytes_in_buffer,flags)
+        case send_result
+        when :EAGAIN
+          _, writeables, errored = IO.select(nil, [writable_socket], [writable_socket], timeout)
+          raise "send fail" if !errored.empty?
+        else
+          bytes_in_buffer -= send_result
+          num_to_read -= send_result
+          sent_so_far += send_result
+          yield send_result if block_given? 
+        end
       end
     end
   end
