@@ -2,6 +2,7 @@ require 'bytepump/version'
 require 'io/nonblock'
 require 'socket'
 require 'io/splice'
+require 'retriable'
 
 # add some methods to IO
 class IO
@@ -13,35 +14,38 @@ class IO
           headers.size >= max_read_size
       headers << sysread(1)
     end
-    raise "non-200 response received" if headers[0,15] != "HTTP/1.1 200 OK"
+    response_code = headers[9,3]
+    raise "non-200 response received" if (response_code != "200" and response_code != "206")
     headers
   end
 end
 
-def splice_from_URL(send_socket: send_socket, host: , path: , num_to_read: )
+def splice_from_URL(send_socket: , host: , path: , num_to_read: , timeout: 60, offset: 0)
   block_size = 4096 # default kernel buffer size on linux is 65536
   flags = IO::Splice::F_MOVE | IO::Splice::F_MORE
   timeout = 60
 
-  # generate socket to S3
-  recv_socket = TCPSocket.new(host,80)
-  recv_socket.nonblock = true
-  recv_socket << "GET #{path} HTTP/1.1\nHost:#{host}\nConnection: keep-alive\n\n"
-  recv_socket.skip_headers
-  recv_socket.nonblock = true
-
   send_socket.nonblock = true
-
-  recv_socket_fd = recv_socket.fileno
   send_socket_fd = send_socket.fileno
 
   sent_so_far = 0
   read_so_far = 0
   bytes_in_buffer = 0
+  range_end = offset + num_to_read
+
   pipe = IO.pipe
   rfd, wfd = pipe.map { |io| io.fileno }
 
   Retriable.retriable do
+    range_start = offset + read_so_far
+    # generate socket to S3
+    recv_socket = TCPSocket.new(host,80)
+    recv_socket.nonblock = true
+    recv_socket << "GET #{path} HTTP/1.1\nHost:#{host}\nConnection: keep-alive\nRange: bytes=#{range_start}-#{range_end}\n\n"
+    recv_socket.skip_headers
+    recv_socket.nonblock = true
+    recv_socket_fd = recv_socket.fileno
+
     while (num_to_read > 0)
       send_this_time = num_to_read > block_size ? block_size : num_to_read
       recv_result = IO.trysplice(recv_socket_fd,nil,wfd,nil,send_this_time,flags) 
