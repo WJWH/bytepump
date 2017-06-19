@@ -1,4 +1,6 @@
-# bytepump
+# THIS README IS OUTDATED AND WILL BE REWRITTEN SOON
+
+## bytepump
 A small Ruby gem to efficiently splice the contents of one file descriptor to another, using Linux syscalls.
 
 ## What it does
