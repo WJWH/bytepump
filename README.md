@@ -1,4 +1,4 @@
-# THIS README IS OUTDATED AND WILL BE REWRITTEN SOON
+# THIS README IS OUTDATED AND THIS REPO IS ONLY KEPT AS A CODE EXAMPLE
 
 ## bytepump
 A small Ruby gem to efficiently splice the contents of one file descriptor to another, using Linux syscalls.
@@ -10,7 +10,7 @@ There are also a few helper methods to make "edge includes" simpler.
 
 ## Limitations
 * It only works on Linux distributions that have the `splice` syscall. 
-* It only works on Ruby version >2.0, due to the GVL escaping funcions used.
+* It only works on Ruby version >2.0, due to the GVL escaping functions used.
 * It only works on IO objects that are actually backed by a linux file descriptor. So, a StringIO won't work.
 * Most Ruby (and C) methods that deal with IO do a lot of buffering, even on reads. Mixing this gem with most IO methods that read from a socket will lead to unexpected results. IO#sysread should be OK though.
 * There is currently not a method that allows for splicing a limited number of bytes, it reads all the way until EOF is reached. Maybe I will add it in a future release.
@@ -91,6 +91,3 @@ ZipTricks::Streamer.open(s) do | zip |
 end #ending the block will cause the central directory for the archive to be written
 s.close
 ```
-    
-## Contributing
-Please feel free to contribute with patches, issues or feature requests! 
